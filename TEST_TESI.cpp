@@ -255,6 +255,10 @@ void create_packet(){
 
 // ------------------------------------------------------- QUA PRINTA BIT A BIT DI LUNGHEZZA GIUSTA -----------------------------------------
 
+#include <iostream>
+#include <ctime>
+using namespace std;
+
 /* funzione che controlla che l'eventi_ID sia del formato corretto (HEX) e che sia del valore compreso tra 8000 e 8009 altrimenti assegno invalid_ID*/
 uint16_t check_event_id(uint16_t event_id) {
     if (event_id >= 0x8000 && event_id <= 0x8009) {
@@ -262,6 +266,25 @@ uint16_t check_event_id(uint16_t event_id) {
     } else {
         return 0xFFFF;
     }
+}
+// MANCA CASO IN CUI EVENT_ID NON VALIDO ANCHE IL SENSORE DEVE AVERE IL VALORE 1111
+uint8_t set_sensor_value(uint16_t event_id, uint8_t anomal_classe) {
+    // uint8_t idsm_id = (event_id >= 0x8000 && event_id <= 0x8008) ? 0 : 1;
+    //uint8_t sensor_value = (event_id >= 0x8000 && event_id <= 0x8008) ? 0b1111 : anomal_classe;
+    //return sensor_value;
+    if (event_id >= 0x8000 && event_id <= 0x8008) {
+        return 0b1111;
+    } else if(event_id == 0x8009){
+        return anomal_classe;
+    }else return 0b11111111;
+}
+
+uint8_t assign_idsm_id(uint16_t event_id) {
+    if (event_id >= 0x8000 && event_id <= 0x8008) {
+        return 0;
+    } else if(event_id == 0x8009){
+        return 1;
+    }else return 255;
 }
 
 template <typename T>
@@ -272,9 +295,7 @@ void print_binary(T num, int num_bits) {
   cout << "\n";
 }
 
-
-
-void create_packet(unsigned int custom_sensor_id, unsigned int custom_event_id){
+void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
 // BYTE 0 --> PROTOCOL VERSION & PROTOCOL HEADER ------------------------------------------------------ OK
   uint8_t byte0 = 0b00010111;
   unsigned int protocol_version = ((byte0 & 0xF0) >> 4);
@@ -298,16 +319,20 @@ void create_packet(unsigned int custom_sensor_id, unsigned int custom_event_id){
      ECU H: 0111
      Undefined ECU: 1111
   */
+  uint8_t custom_sensor_id = set_sensor_value(custom_event_id, anomal_classe);
   uint8_t byte1 = (custom_sensor_id >> 6) & 0x03;
   uint8_t byte2 = custom_sensor_id & 0x3F;
-  // uint8_t byte1 = 0b00000000;
-  // uint8_t byte2 = 0b01000001;
-  unsigned int idsm_ID = ((byte2 & 0xC0) >> 6) |((byte1 << 2));
-  unsigned int sensor_ID = (byte2 & 0x3F);
+  // uint8_t idsm_ID = ((byte2 & 0xC0) >> 6) |((byte1 << 2));
+  custom_sensor_id = (byte2 & 0x3F);
+  uint8_t idsm_ID = assign_idsm_id(custom_event_id);
   cout <<"IdsM ID: ";
   print_binary(idsm_ID,10);
+  //cout <<"byte1: ";
+  //print_binary(byte1,8);
   cout << "Sensor ID: ";
-  print_binary(sensor_ID,6);
+  print_binary(custom_sensor_id,6);
+  //cout <<"byte2: ";
+  //print_binary(byte2,8);
 
   // BYTE 3 E BYTE 4, tipo di evento avvenuto (es. quale rule è stata violata, che tipo di anomalia sul tempo)
   /* Rule 1: diagnostic anomaly --> 0x8000 --> 1000000000000000 
@@ -324,13 +349,11 @@ void create_packet(unsigned int custom_sensor_id, unsigned int custom_event_id){
   
   uint8_t byte3 = (custom_event_id >> 8) & 0xFF;
   uint8_t byte4 = custom_event_id & 0xFF;
-  check_event_id(custom_event_id);
-  // uint8_t byte3 = 0b00000000;
-  // uint8_t byte4 = 0b00000000;
-  uint16_t event_ID = (byte3 << 8) + byte4;
+  custom_event_id = (byte3 << 8) + byte4;
+  custom_event_id = check_event_id(custom_event_id);
   cout << "Event ID: ";
-  print_binary(event_ID,16);
-
+  print_binary(custom_event_id,16);
+/*
   // BYTE 5 E BYTE 6, count inizializzato a 1, con aggregation_filter() aumenta
   uint8_t byte5 = 0b00000000 ;
   uint8_t byte6 = 0b00000001;
@@ -366,14 +389,20 @@ void create_packet(unsigned int custom_sensor_id, unsigned int custom_event_id){
   // CONTEXT DATA, n byte
   uint8_t contex_data = 0b00000001;
   cout << "Context Data: ";
-  print_binary(contex_data,8);
+  print_binary(contex_data,8);*/
 }
 
-void main(){
-  uint8_t s_ID = 5;
-  uint16_t e_ID = 0x8005;
-  create_packet(s_ID,e_ID);
+int main(){
+  // uint8_t s_ID = 5;
+  uint8_t anomal_classe = 8;
+  uint16_t e_ID = 0x8006;
+  uint16_t e_ID3 = 0x8009;
   uint16_t e_ID2 = 0X80FF;
-  create_packet(s_ID,e_ID2);
+  cout << "Pacchetto legit del core 0:\n";
+  create_packet(e_ID,anomal_classe);
+  cout << "Pacchetto legit del core 2:\n";
+  create_packet(e_ID3,anomal_classe);
+  cout << "Pacchetto con event_ID inesistente:\n";
+  create_packet(e_ID2,anomal_classe);
 
 }
