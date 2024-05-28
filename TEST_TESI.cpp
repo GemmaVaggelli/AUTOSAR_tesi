@@ -1,103 +1,3 @@
-/*void create_packet(){
-// programmino in c con main funzione void createpacket() printo interno pacchetto
-
-
-    // TODO: capire come firmare il pacchetto
-    // prendiamo l'ECU per autenticare parte del messaggio
-    /* 
-    char abs_path[MAX_PATH];
-    if (!getcwd(abs_path, MAX_PATH)){
-		perror("Error directory");
-		return false;
-     };
-
-    string path = string(abs_path) + "/client_file/keys/" + client_session-> username + "_private_key.pem";
-    EVP_PKEY *client_private_key = load_chiave_priv(path.c_str());
-	if(client_private_key == nullptr){
-		perror("Error loading client_private_key");
-        return false;
-    }
-
-    // ELIMINABILE generazione chiave di sessione
-    unsigned char *plaintext = new unsigned char[EVP_CIPHER_key_length(EVP_aes_256_gcm())];
-    if(!RAND_bytes(plaintext, EVP_CIPHER_key_length(EVP_aes_256_gcm()))){
-		perror("Error creating session key");
-		delete_buffers(plaintext);
-		return false;
-    }
-
-    //ELIMINABILE aggiungiamo la chiave di sessione alla sessione client
-    memcpy(client_session->aes_key, plaintext, EVP_CIPHER_key_length(EVP_aes_256_gcm()));
-
-    // ELIMINABILE cifriamo la chiave di sessione, usando la chiave pubblica effimera (eph_key_pub)
-    unsigned char *ciphertext;
-    int ciphertext_len;
-
-    if(!rsaEncrypt(plaintext, EVP_CIPHER_key_length(EVP_aes_256_gcm()), client_session-> eph_key_pub, ciphertext, ciphertext_len)){
-		perror("Error encrypting key session");
-		delete_buffers(plaintext);
-		return false;
-     }
-
-    //DIGITAL SIGNATURE
-    //serializzare la lunghezza del ciphertext (cioè key_session cifrata)
-    unsigned char *ciphertext_len_byte = new unsigned char[sizeof(long int)];
-    serialize_longint(ciphertext_len, ciphertext_len_byte, sizeof(long int));
-
-    //allocare il buffer per il blocchetto da firmare(quello giallo)
-    //to_sign = key_session_len | ciphertext | nonce
-    int to_sign_len = sizeof(long int) + ciphertext_len + NONCE_LEN;
-    unsigned char *to_sign = new unsigned char[to_sign_len];
-
-    //copiamo i dati nel buffer to_sign
-    memcpy(to_sign, ciphertext_len_byte, sizeof(long int));
-    memcpy(to_sign + sizeof(long int), ciphertext, ciphertext_len);
-    memcpy(to_sign + sizeof(long int) + ciphertext_len, client_session-> nonceClient, NONCE_LEN);
-
-    //creare la firma digitale
-    int signature_len = EVP_PKEY_size(client_private_key);
-    unsigned char *signature = new unsigned char[signature_len];
-    if(create_digital_signature(client_private_key, to_sign, to_sign_len, signature) != signature_len){
-		perror("Error: fail to create digital signature");
-		delete_buffers(plaintext, ciphertext, to_sign, signature, ciphertext_len_byte);
-		return false;
-     }
-
-    //allocare buffer per il payload
-    //lunghezza in byte del blocco giallo
-    unsigned char *to_sign_len_byte = new unsigned char[sizeof(int)];
-    //lunghezza in byte della firma  
-    unsigned char *signature_len_byte = new unsigned char[sizeof(int)];
-
-    //serializzo la dimensione del payload
-    serialize_int(to_sign_len, to_sign_len_byte);
-	//serializza la dimensione della firma
-    serialize_int(signature_len, signature_len_byte);
- 
-    //allochiamo la dimensione del blocco del messaggio M3
-	// MESSAGE: to_sign_len | to_sign | signature_len | signature
-    size_t message_size = sizeof(int) + to_sign_len + sizeof(int) + int_to_size_t(signature_len); 
-    unsigned char *message = new unsigned char[message_size];
-
-    //copiamo i dati nel buffer del messaggio
-    //messaggio: to_sign_len, blocchetto giallo, signature_len, signature
-    memcpy(message, to_sign_len_byte, sizeof(int));
-    memcpy(message + sizeof(int), to_sign, to_sign_len);
-    memcpy(message + sizeof(int) + to_sign_len, signature_len_byte, sizeof(int));
-    memcpy(message + sizeof(int) + to_sign_len + sizeof(int), signature, signature_len);
-	
-	// invio messaggio M3
-	if(send(client_session->socket, message, message_size,0) <0){
-		perror("Error send M3");
-		delete_buffers(plaintext, ciphertext, to_sign, signature, ciphertext_len_byte, signature_len_byte, message, to_sign_len_byte);
-		return false;
-	}
-
-	delete_buffers(plaintext, ciphertext, to_sign, signature, ciphertext_len_byte, signature_len_byte, message, to_sign_len_byte);
-	return true;
-}*/
-
-
 /*
 void create_packet(){
   // ------------------------------------------------------------------------- EVENT FRAME HEADER --------------------------------------------------------------------------
@@ -167,9 +67,6 @@ void create_packet(){
 }
 */
 
-#include <cstdint>
-#include <iostream>
-using namespace std;
 /*
 template <typename T>
 void print_binary(T num) {
@@ -255,9 +152,176 @@ void create_packet(){
 
 // ------------------------------------------------------- QUA PRINTA BIT A BIT DI LUNGHEZZA GIUSTA -----------------------------------------
 
+// #include "aux_functions.h"
 #include <iostream>
+#include <string.h>
+#include <string>
+#include <cstddef> 
 #include <ctime>
+#include <vector>
 using namespace std;
+
+string diagnostic_anomaly_info = "";
+string id_anomaly_info = "";
+string dlc_anomaly_info = "";
+string rate_anomaly_info = "";
+string bus_load_anomaly_info = "";
+string counter_anomaly_info = "";
+string additional_checks_anomaly_info = "";
+string suspension_anomaly_info = "";
+string period_anomaly_info = "";
+string voltage_anomaly_info = "";
+
+string anomaly_info = "";
+
+string get_voltage_anomaly_info(){
+  voltage_anomaly_info = "Voltage anomaly!";
+  return voltage_anomaly_info;
+  }
+
+string get_anomaly_info(uint16_t event_id){
+  if(event_id < 0x8000 && event_id > 0x8009){
+    return "Invalid Event ID";
+  }/*
+  else if(event_id == 0x8000){
+    anomaly_info = get_diagn_anomaly_info();
+  }else if(event_id == 0x8001){
+    anomaly_info = get_id_anomaly_info();
+  }else if(event_id == 0x8002){
+    anomaly_info = get_dlc_anomaly_info();
+  }else if(event_id == 0x8003){
+    anomaly_info = get_rate_anomaly_info();
+  }else if(event_id == 0x8004){
+    anomaly_info = get_counter_anomaly_info();
+  }else if(event_id == 0x8005){
+    anomaly_info = get_bus_load_anomaly_info();
+  }else if(event_id == 0x8006){
+    anomaly_info = get_additional_anomaly_info();
+  }else if(event_id == 0x8007){
+    anomaly_info = get_suspension_anomaly_info();
+  }else if(event_id == 0x8008){
+    anomaly_info = get_period_anomaly_info();
+  }*/else if(event_id == 0x8009){
+    anomaly_info = get_voltage_anomaly_info();
+  }
+  return anomaly_info;
+}
+/*
+// FUNZIONI PER RACCOGLIERE I DATI DI CONTESTO DA METTERE NEL PACCHETTO 
+string get_diagn_anomaly_info(){
+  if(Diagnostic_anomaly<LogLength){
+    for(int p = 0; p < Diagnostic_anomaly; p++){
+      diagnostic_anomaly_info = "0x" + String(Diagn_ID_log[p],HEX);
+    }
+  }
+  else{
+    for(int p = 0; p < LogLength; p++){
+      diagnostic_anomaly_info = "0x" + String(Diagn_ID_log[p],HEX) ;
+    }
+  }
+  Diagnostic_anomaly=0;
+  P_Diagn_ID_log=&Diagn_ID_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Diagn_ID_log[r]=0;
+  } return diagnostic_anomaly_info;
+}
+
+string get_id_anomaly_info(){
+  if(ID_anomaly<LogLength){
+    for(int s = 0; s < ID_anomaly; s++){
+      id_anomaly_info = "0x" + String(Anomal_ID_log[s],HEX);
+    }
+  }
+  else{
+    for(int s = 0; s < LogLength; s++){
+      id_anomaly_info = "0x"+ String(Anomal_ID_log[s],HEX);
+    }
+  }
+  ID_anomaly=0;
+  P_Anomal_ID_log=&Anomal_ID_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Anomal_ID_log[r]=0;
+  }return id_anomaly_info;
+}
+
+string get_dlc_anomaly_info(){
+  if(DLC_anomaly<LogLength){
+    for(int c = 0; c < DLC_anomaly; c++){
+      dlc_anomaly_info = "0x" + String(Anomal_DLC_log[c] ,HEX);
+    }
+  }
+  else{
+    for(int c = 0; c < LogLength; c++){
+      dlc_anomaly_info = "0x" + String(Anomal_DLC_log[c] ,HEX);
+    }
+  }
+  DLC_anomaly=0;
+  P_Anomal_DLC_log=&Anomal_DLC_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Anomal_DLC_log[r]=0;
+  }return dlc_anomaly_info;
+}
+
+string get_rate_anomaly_info(){
+  if(Rate_anomaly<LogLength){
+    for(int d = 0; d < Rate_anomaly; d++){
+      rate_anomaly_info = "0x"+ String(Anomal_Rate_log[d],HEX);
+    }
+  }
+  else{
+    for(int d = 0; d < LogLength; d++){
+      rate_anomaly_info = "0x" + String(Anomal_Rate_log[d],HEX);
+    }
+  }
+  Rate_anomaly=0;
+  P_Anomal_Rate_log=&Anomal_Rate_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Anomal_Rate_log[r]=0;
+  }return rate_anomaly_info;
+}
+
+string get_bus_load_anomaly_info(){
+  if(BusLoad_anomaly !=0 ){
+    bus_load_anomaly_info = "Bus Load greater than 80%";
+  }
+  BusLoad_anomaly=0;
+  return bus_load_anomlay_info;
+}
+
+string get_counter_anomaly_info(){
+  if(Counter_anomaly<LogLength){
+         for(int c = 0; c < Counter_anomaly; c++){
+          counter_anomaly_info = "0x"+ String(Anomal_Counter_log[c],HEX);
+         }
+       }
+       else{
+            for(int c = 0; c < LogLength; c++){
+             counter_anomaly_info = "0x" + String(Anomal_Counter_log[c],HEX);
+        }
+       }
+       Counter_anomaly=0;
+       P_Anomal_Counter_log=&Anomal_Counter_log[0];
+       return counter_anomaly_info;
+}
+
+string get_additional_anomaly_info(){
+      if (VehicleSpeed_ID != 0){
+      if(velocity_increase_anomaly != 0){
+        additional_checks_anomaly_info = "Previous speed: " + String(anomal_prev_vel) + "  Following speed:"+ String(anomal_following_vel);
+        }
+      velocity_increase_anomaly=0;
+      }
+      return additional_checks_anomaly_info;
+    // init_time=millis();
+  }
+
+
+// TODO: vedere dove si possono prendere dati per queste anomalie
+String get_suspension_anomaly_info(){return suspension_anomaly_info;}
+
+String get_period_anomaly_info(){return period_anomaly_info;}
+*/
+
 
 /* funzione che controlla che l'eventi_ID sia del formato corretto (HEX) e che sia del valore compreso tra 8000 e 8009 altrimenti assegno invalid_ID*/
 uint16_t check_event_id(uint16_t event_id) {
@@ -267,16 +331,13 @@ uint16_t check_event_id(uint16_t event_id) {
         return 0xFFFF;
     }
 }
-// MANCA CASO IN CUI EVENT_ID NON VALIDO ANCHE IL SENSORE DEVE AVERE IL VALORE 1111
+
 uint8_t set_sensor_value(uint16_t event_id, uint8_t anomal_classe) {
-    // uint8_t idsm_id = (event_id >= 0x8000 && event_id <= 0x8008) ? 0 : 1;
-    //uint8_t sensor_value = (event_id >= 0x8000 && event_id <= 0x8008) ? 0b1111 : anomal_classe;
-    //return sensor_value;
     if (event_id >= 0x8000 && event_id <= 0x8008) {
         return 0b1111;
     } else if(event_id == 0x8009){
         return anomal_classe;
-    }else return 0b11111111;
+    }else return 0b1111;
 }
 
 uint8_t assign_idsm_id(uint16_t event_id) {
@@ -284,7 +345,7 @@ uint8_t assign_idsm_id(uint16_t event_id) {
         return 0;
     } else if(event_id == 0x8009){
         return 1;
-    }else return 255;
+    }else return 255; // undefined core
 }
 
 template <typename T>
@@ -293,6 +354,12 @@ void print_binary(T num, int num_bits) {
     cout << ((num >> i) & 1);
   }
   cout << "\n";
+}
+
+void printAnomalyBitstream(const vector<uint8_t> anomaly_bitstream) {
+  for (size_t i = 0; i < anomaly_bitstream.size(); i++) {
+    print_binary(anomaly_bitstream[i], 8); // print each byte as 8-bit binary
+  }
 }
 
 void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
@@ -353,7 +420,7 @@ void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
   custom_event_id = check_event_id(custom_event_id);
   cout << "Event ID: ";
   print_binary(custom_event_id,16);
-/*
+
   // BYTE 5 E BYTE 6, count inizializzato a 1, con aggregation_filter() aumenta
   uint8_t byte5 = 0b00000000 ;
   uint8_t byte6 = 0b00000001;
@@ -380,29 +447,36 @@ void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
   // CONTEXT DATA LENGTH, capire in che formato comunicare la context data length
   // codice errore e poi uno fa lookup oppure stringa 
   unsigned int length_format = 0b1;
-  uint32_t context_data_length = 0b0000000000000000000000000000;
   cout << "Context Data Length Format: ";
   print_binary(length_format,1);
+  string context_data = get_anomaly_info(custom_event_id);
+  vector<uint8_t> anomaly_bitstream(context_data.begin(), context_data.end());
+  // string context_data = get_anomaly_info(custom_event_id);
+  // byte anomaly_bitstream[context_data.length()];
+ // anomaly_bitstream contains the bitstream representation of the anomaly info string
+  size_t anomaly_bitstream_length = anomaly_bitstream.size();
+  // uint32_t context_data_length = 0b0000000000000000000000000000; // 4 byte sizeof(anomaly_info);
   cout << "Context Data Length: ";
-  print_binary(context_data_length,32);
+  print_binary(anomaly_bitstream_length, 32);
+  // print_binary(context_data_length,32);
   
-  // CONTEXT DATA, n byte
-  uint8_t contex_data = 0b00000001;
+  // CONTEXT DATA, n byte chiamerò get_anomaly_info(custom_event_id);
+  // uint8_t contex_data = 0b00000001;
   cout << "Context Data: ";
-  print_binary(contex_data,8);*/
+  printAnomalyBitstream(anomaly_bitstream);
+  // print_binary(contex_data,8);
 }
 
 int main(){
-  // uint8_t s_ID = 5;
-  uint8_t anomal_classe = 8;
-  uint16_t e_ID = 0x8006;
-  uint16_t e_ID3 = 0x8009;
-  uint16_t e_ID2 = 0X80FF;
+  uint8_t anomal_classe = 8; // ECU H
+  //uint16_t e_ID = 0x8005; // RULE ADDITIONAL CHECKS
+  uint16_t e_ID3 = 0x8009; // VOLTAGE ANOMALY
+  //uint16_t e_ID2 = 0X80FF; // INVALID EVENT_ID
   cout << "Pacchetto legit del core 0:\n";
-  create_packet(e_ID,anomal_classe);
+  //create_packet(e_ID,anomal_classe);
   cout << "Pacchetto legit del core 2:\n";
   create_packet(e_ID3,anomal_classe);
   cout << "Pacchetto con event_ID inesistente:\n";
-  create_packet(e_ID2,anomal_classe);
+  //create_packet(e_ID2,anomal_classe);
 
 }
