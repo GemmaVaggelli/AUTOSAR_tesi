@@ -152,13 +152,18 @@ void create_packet(){
 
 // ------------------------------------------------------- QUA PRINTA BIT A BIT DI LUNGHEZZA GIUSTA -----------------------------------------
 
-// #include "aux_functions.h"
+//#include "aux_functions.h"
+//#include <wolfssl/ssl.h>
+//#include <wolfssl/cert_data.h>
+// #include <ed25519/src/ed25519.h>
 #include <iostream>
 #include <string.h>
 #include <string>
 #include <cstddef> 
 #include <ctime>
 #include <vector>
+#include <bitset>
+#include <iomanip>
 using namespace std;
 
 string diagnostic_anomaly_info = "";
@@ -173,8 +178,146 @@ string period_anomaly_info = "";
 string voltage_anomaly_info = "";
 
 string anomaly_info = "";
+/*
+// FUNZIONI PER RACCOGLIERE I DATI DI CONTESTO DA METTERE NEL PACCHETTO 
+string get_diagn_anomaly_info(){
+  if(Diagnostic_anomaly<LogLength){
+    for(int p = 0; p < Diagnostic_anomaly; p++){
+      diagnostic_anomaly_info = "0x" + string(Diagn_ID_log[p],HEX);
+    }
+  }
+  else{
+    for(int p = 0; p < LogLength; p++){
+      diagnostic_anomaly_info = "0x" + string(Diagn_ID_log[p],HEX) ;
+    }
+  }
+  Diagnostic_anomaly=0;
+  P_Diagn_ID_log=&Diagn_ID_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Diagn_ID_log[r]=0;
+  } return diagnostic_anomaly_info;
+}
+
+string get_id_anomaly_info(){
+  if(ID_anomaly<LogLength){
+    for(int s = 0; s < ID_anomaly; s++){
+      id_anomaly_info = "0x" + string(Anomal_ID_log[s],HEX);
+    }
+  }
+  else{
+    for(int s = 0; s < LogLength; s++){
+      id_anomaly_info = "0x"+ string(Anomal_ID_log[s],HEX);
+    }
+  }
+  ID_anomaly=0;
+  P_Anomal_ID_log=&Anomal_ID_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Anomal_ID_log[r]=0;
+  }return id_anomaly_info;
+}
+
+string get_dlc_anomaly_info(){
+  if(DLC_anomaly<LogLength){
+    for(int c = 0; c < DLC_anomaly; c++){
+      dlc_anomaly_info = "0x" + string(Anomal_DLC_log[c] ,HEX);
+    }
+  }
+  else{
+    for(int c = 0; c < LogLength; c++){
+      dlc_anomaly_info = "0x" + string(Anomal_DLC_log[c] ,HEX);
+    }
+  }
+  DLC_anomaly=0;
+  P_Anomal_DLC_log=&Anomal_DLC_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Anomal_DLC_log[r]=0;
+  }return dlc_anomaly_info;
+}
+
+string get_rate_anomaly_info(){
+  if(Rate_anomaly<LogLength){
+    for(int d = 0; d < Rate_anomaly; d++){
+      rate_anomaly_info = "0x"+ string(Anomal_Rate_log[d],HEX);
+    }
+  }
+  else{
+    for(int d = 0; d < LogLength; d++){
+      rate_anomaly_info = "0x" + string(Anomal_Rate_log[d],HEX);
+    }
+  }
+  Rate_anomaly=0;
+  P_Anomal_Rate_log=&Anomal_Rate_log[0];
+  for(int r = 0; r < LogLength; r++){
+    Anomal_Rate_log[r]=0;
+  }return rate_anomaly_info;
+}
+
+string get_bus_load_anomaly_info(){
+  if(BusLoad_anomaly !=0 ){
+    bus_load_anomaly_info = "Bus Load greater than 80%";
+  }
+  BusLoad_anomaly=0;
+  return bus_load_anomlay_info;
+}
+
+string get_counter_anomaly_info(){
+  if(Counter_anomaly<LogLength){
+         for(int c = 0; c < Counter_anomaly; c++){
+          counter_anomaly_info = "0x"+ string(Anomal_Counter_log[c],HEX);
+         }
+       }
+       else{
+            for(int c = 0; c < LogLength; c++){
+             counter_anomaly_info = "0x" + string(Anomal_Counter_log[c],HEX);
+        }
+       }
+       Counter_anomaly=0;
+       P_Anomal_Counter_log=&Anomal_Counter_log[0];
+       return counter_anomaly_info;
+}
+
+string get_additional_anomaly_info(){
+      if (VehicleSpeed_ID != 0){
+      if(velocity_increase_anomaly != 0){
+        additional_checks_anomaly_info = "Previous speed: " + string(anomal_prev_vel) + "  Following speed:"+ string(anomal_following_vel);
+        }
+      velocity_increase_anomaly=0;
+      }
+      return additional_checks_anomaly_info;
+    // init_time=millis();
+  }
+
+// TODO: vedere dove si possono prendere dati per queste anomalie
+string get_suspension_anomaly_info(){
+  for(int i=0;i<Num_ID_TFP;i++){
+        if(ID_sospesi[i]!=0){
+          suspension_anomaly_info = "Suspended ID 0x" + string(White_List_ID[i],HEX);
+          ID_sospesi[i]=0;
+          }
+        }
+  return suspension_anomaly_info;
+}
+
+string get_period_anomaly_info(){
+  for (int j=0;j<Num_ID_TFP;j++){
+    if (*(pID_anomali_media + j)>=3){
+      if(IDtrovato==j){
+        period_anomaly_info = "Period anomaly detected for ID 0x" + string(White_List_ID[j],HEX) + "Average value measured = " + string(VetMediaTest[j]);
+        if (*(pID_anomali_varianza + j)>=3){
+           period_anomaly_info =+"Variance is anomalous as well";
+        }
+      }
+    }
+  }
+  return period_anomaly_info;
+}
 
 string get_voltage_anomaly_info(){
+  voltage_anomaly_info = "Voltage anomaly!";
+  return voltage_anomaly_info;
+  }
+*/
+string get_voltage_anomaly_info_dummy(){
   voltage_anomaly_info = "Voltage anomaly!";
   return voltage_anomaly_info;
   }
@@ -202,126 +345,54 @@ string get_anomaly_info(uint16_t event_id){
   }else if(event_id == 0x8008){
     anomaly_info = get_period_anomaly_info();
   }*/else if(event_id == 0x8009){
-    anomaly_info = get_voltage_anomaly_info();
+    //anomaly_info = get_voltage_anomaly_info();
+    anomaly_info = get_voltage_anomaly_info_dummy();
   }
   return anomaly_info;
 }
 /*
-// FUNZIONI PER RACCOGLIERE I DATI DI CONTESTO DA METTERE NEL PACCHETTO 
-string get_diagn_anomaly_info(){
-  if(Diagnostic_anomaly<LogLength){
-    for(int p = 0; p < Diagnostic_anomaly; p++){
-      diagnostic_anomaly_info = "0x" + String(Diagn_ID_log[p],HEX);
+vector<uint8_t> sign(vector<uint8_t> packet){
+    // Load the CA certificate
+    WOLFSSL_CTX* ctx = wolfSSL_CTX_new();
+    wolfSSL_CTX_load_verify_locations(ctx, "ca-cert.pem", NULL);
+
+    // Create a new certificate
+    WOLFSSL_CERT* cert = wolfSSL_cert_new();
+    wolfSSL_cert_set_version(cert, 3); // Version 3
+    wolfSSL_cert_set_serial_number(cert, 0); // Randomly generated serial number
+    wolfSSL_cert_set_sig_type(cert, CTC_SHAwRSA); // Signature type
+
+    // Set the subject information
+    strncpy(cert->subject.country, "IT", CTC_NAME_SIZE);
+    strncpy(cert->subject.state, "IT", CTC_NAME_SIZE);
+    strncpy(cert->subject.locality, "Pisa", CTC_NAME_SIZE);
+    strncpy(cert->subject.org, "yaSSL", CTC_NAME_SIZE);
+    strncpy(cert->subject.unit, "Development", CTC_NAME_SIZE);
+    strncpy(cert->subject.commonName, "www.wolfssl.com", CTC_NAME_SIZE);
+    strncpy(cert->subject.email, "info@wolfssl.com", CTC_NAME_SIZE);
+
+    // Load the private key
+    WOLFSSL_KEY* key = wolfSSL_key_new();
+    wolfSSL_key_load(key, "private-key.pem", NULL);
+
+    // Sign the binary blob
+    unsigned char* blob = packet.data();
+    int blob_len = packet.size();
+    unsigned char* signature = malloc(blob_len + 256); // Allocate space for the signature
+    uint16_t sig_len = wolfSSL_sign(blob, blob_len, signature, key, cert);
+    if (sig_len < 0) {
+      cout << "Error in signing the packet";
+        // Error signing the blob
     }
-  }
-  else{
-    for(int p = 0; p < LogLength; p++){
-      diagnostic_anomaly_info = "0x" + String(Diagn_ID_log[p],HEX) ;
-    }
-  }
-  Diagnostic_anomaly=0;
-  P_Diagn_ID_log=&Diagn_ID_log[0];
-  for(int r = 0; r < LogLength; r++){
-    Diagn_ID_log[r]=0;
-  } return diagnostic_anomaly_info;
-}
+    packet.push_back(sig_len);
+    packet.push_back(signature);
 
-string get_id_anomaly_info(){
-  if(ID_anomaly<LogLength){
-    for(int s = 0; s < ID_anomaly; s++){
-      id_anomaly_info = "0x" + String(Anomal_ID_log[s],HEX);
-    }
-  }
-  else{
-    for(int s = 0; s < LogLength; s++){
-      id_anomaly_info = "0x"+ String(Anomal_ID_log[s],HEX);
-    }
-  }
-  ID_anomaly=0;
-  P_Anomal_ID_log=&Anomal_ID_log[0];
-  for(int r = 0; r < LogLength; r++){
-    Anomal_ID_log[r]=0;
-  }return id_anomaly_info;
-}
-
-string get_dlc_anomaly_info(){
-  if(DLC_anomaly<LogLength){
-    for(int c = 0; c < DLC_anomaly; c++){
-      dlc_anomaly_info = "0x" + String(Anomal_DLC_log[c] ,HEX);
-    }
-  }
-  else{
-    for(int c = 0; c < LogLength; c++){
-      dlc_anomaly_info = "0x" + String(Anomal_DLC_log[c] ,HEX);
-    }
-  }
-  DLC_anomaly=0;
-  P_Anomal_DLC_log=&Anomal_DLC_log[0];
-  for(int r = 0; r < LogLength; r++){
-    Anomal_DLC_log[r]=0;
-  }return dlc_anomaly_info;
-}
-
-string get_rate_anomaly_info(){
-  if(Rate_anomaly<LogLength){
-    for(int d = 0; d < Rate_anomaly; d++){
-      rate_anomaly_info = "0x"+ String(Anomal_Rate_log[d],HEX);
-    }
-  }
-  else{
-    for(int d = 0; d < LogLength; d++){
-      rate_anomaly_info = "0x" + String(Anomal_Rate_log[d],HEX);
-    }
-  }
-  Rate_anomaly=0;
-  P_Anomal_Rate_log=&Anomal_Rate_log[0];
-  for(int r = 0; r < LogLength; r++){
-    Anomal_Rate_log[r]=0;
-  }return rate_anomaly_info;
-}
-
-string get_bus_load_anomaly_info(){
-  if(BusLoad_anomaly !=0 ){
-    bus_load_anomaly_info = "Bus Load greater than 80%";
-  }
-  BusLoad_anomaly=0;
-  return bus_load_anomlay_info;
-}
-
-string get_counter_anomaly_info(){
-  if(Counter_anomaly<LogLength){
-         for(int c = 0; c < Counter_anomaly; c++){
-          counter_anomaly_info = "0x"+ String(Anomal_Counter_log[c],HEX);
-         }
-       }
-       else{
-            for(int c = 0; c < LogLength; c++){
-             counter_anomaly_info = "0x" + String(Anomal_Counter_log[c],HEX);
-        }
-       }
-       Counter_anomaly=0;
-       P_Anomal_Counter_log=&Anomal_Counter_log[0];
-       return counter_anomaly_info;
-}
-
-string get_additional_anomaly_info(){
-      if (VehicleSpeed_ID != 0){
-      if(velocity_increase_anomaly != 0){
-        additional_checks_anomaly_info = "Previous speed: " + String(anomal_prev_vel) + "  Following speed:"+ String(anomal_following_vel);
-        }
-      velocity_increase_anomaly=0;
-      }
-      return additional_checks_anomaly_info;
-    // init_time=millis();
-  }
-
-
-// TODO: vedere dove si possono prendere dati per queste anomalie
-String get_suspension_anomaly_info(){return suspension_anomaly_info;}
-
-String get_period_anomaly_info(){return period_anomaly_info;}
-*/
-
+    // Free the resources
+    wolfSSL_key_free(key);
+    wolfSSL_cert_free(cert);
+    wolfSSL_CTX_free(ctx);
+    return packet;
+}*/
 
 /* funzione che controlla che l'eventi_ID sia del formato corretto (HEX) e che sia del valore compreso tra 8000 e 8009 altrimenti assegno invalid_ID*/
 uint16_t check_event_id(uint16_t event_id) {
@@ -334,7 +405,7 @@ uint16_t check_event_id(uint16_t event_id) {
 
 uint8_t set_sensor_value(uint16_t event_id, uint8_t anomal_classe) {
     if (event_id >= 0x8000 && event_id <= 0x8008) {
-        return 0b1111;
+        return 0b1000;
     } else if(event_id == 0x8009){
         return anomal_classe;
     }else return 0b1111;
@@ -353,7 +424,7 @@ void print_binary(T num, int num_bits) {
   for (int i = num_bits - 1; i >= 0; i--) {
     cout << ((num >> i) & 1);
   }
-  cout << "\n";
+  cout << "";
 }
 
 void printAnomalyBitstream(const vector<uint8_t> anomaly_bitstream) {
@@ -362,6 +433,19 @@ void printAnomalyBitstream(const vector<uint8_t> anomaly_bitstream) {
   }
 }
 
+void print_binary_blob(const vector<uint8_t>& blob) {
+    for (size_t i = 0; i < blob.size(); ++i) {
+        bitset<8> b(blob[i]);
+        cout << setw(2) << i << ": " << b.to_string() << " ";
+
+        if ((i + 1) % 8 == 0) {
+            cout << endl;
+        }
+    }
+    cout << endl;
+}
+
+/*
 void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
 // BYTE 0 --> PROTOCOL VERSION & PROTOCOL HEADER ------------------------------------------------------ OK
   uint8_t byte0 = 0b00010111;
@@ -384,8 +468,9 @@ void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
      ECU F: 0101
      ECU G: 0110
      ECU H: 0111
+     CAN: 1000
      Undefined ECU: 1111
-  */
+  
   uint8_t custom_sensor_id = set_sensor_value(custom_event_id, anomal_classe);
   uint8_t byte1 = (custom_sensor_id >> 6) & 0x03;
   uint8_t byte2 = custom_sensor_id & 0x3F;
@@ -412,7 +497,7 @@ void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
      Time 1: suspension anomaly --> 8007 --> 1000000000000111
      Time 2: Period check anomaly --> 8008 --> 1000000000001000
      Voltage 1: Voltage anomaly --> 8009 --> 1000000000001001
-     Invalid_ID: 0xFFFF --> 1111111111111111 */
+     Invalid_ID: 0xFFFF --> 1111111111111111 
   
   uint8_t byte3 = (custom_event_id >> 8) & 0xFF;
   uint8_t byte4 = custom_event_id & 0xFF;
@@ -445,38 +530,116 @@ void create_packet(uint16_t custom_event_id, uint8_t anomal_classe){
 
   // -------------------------------------------------------------------------- CONTEXT DATA FRAME ------------------------------------------------------------------------
   // CONTEXT DATA LENGTH, capire in che formato comunicare la context data length
-  // codice errore e poi uno fa lookup oppure stringa 
   unsigned int length_format = 0b1;
   cout << "Context Data Length Format: ";
   print_binary(length_format,1);
   string context_data = get_anomaly_info(custom_event_id);
   vector<uint8_t> anomaly_bitstream(context_data.begin(), context_data.end());
-  // string context_data = get_anomaly_info(custom_event_id);
   // byte anomaly_bitstream[context_data.length()];
  // anomaly_bitstream contains the bitstream representation of the anomaly info string
   size_t anomaly_bitstream_length = anomaly_bitstream.size();
-  // uint32_t context_data_length = 0b0000000000000000000000000000; // 4 byte sizeof(anomaly_info);
   cout << "Context Data Length: ";
   print_binary(anomaly_bitstream_length, 32);
-  // print_binary(context_data_length,32);
-  
   // CONTEXT DATA, n byte chiamerò get_anomaly_info(custom_event_id);
-  // uint8_t contex_data = 0b00000001;
   cout << "Context Data: ";
   printAnomalyBitstream(anomaly_bitstream);
-  // print_binary(contex_data,8);
+}*/
+
+// ------------------------------------------------------------------------- CREAZIONE PACCHETTO COME BINARY BLOB ----------------------------------------
+vector<uint8_t> create_packet(uint16_t custom_event_id, uint8_t anomal_classe){//, string anomaly_info) {
+    vector<uint8_t> packet;
+
+    // BYTE 0 --> PROTOCOL VERSION & PROTOCOL HEADER ------------------------------------------------------ OK
+    
+    uint8_t byte0 = 0b00010111;
+    packet.push_back(byte0);
+    uint8_t custom_sensor_id = set_sensor_value(custom_event_id, anomal_classe);
+    uint8_t idsm_ID = assign_idsm_id(custom_event_id);
+    packet.push_back(idsm_ID);
+    packet.push_back(custom_sensor_id & 0x3F);
+    packet.push_back((custom_event_id >> 8) & 0xFF);
+    packet.push_back(custom_event_id & 0xFF);
+    packet.push_back(0x00); // counter
+    packet.push_back(0x01); // counter
+    packet.push_back(0x00); //reserverd 
+
+
+    vector<uint8_t> timestamp_vec;
+    time_t timestamp = time(nullptr); // get the current timestamp
+
+    // Convert the timestamp to a 64-bit integer (assuming time_t is 32-bit or 64-bit)
+    uint64_t timestamp_64 = static_cast<uint64_t>(timestamp);
+
+    // Convert the 64-bit integer to a byte array (big-endian)
+    for (int i = sizeof(uint64_t) - 1; i >= 0; --i) {
+    timestamp_vec.push_back(static_cast<uint8_t>((timestamp_64 >> (i * 8)) & 0xFF));
+    }
+    timestamp_vec[0] = timestamp_vec[0] | 0x80; // added source = 1 CUSTOM 
+    // Print the byte array
+    for (uint8_t t : timestamp_vec) {
+        packet.push_back(t);
+        cout << static_cast<int>(t) << " ";
+    }
+    
+    // uint8_t length_format = 0b10000000; // 4byte long context data length
+    // packet.push_back(0x80); 
+
+    string context_data = "Mattia sei bellissimo VIVALATOPA";//get_anomaly_info(custom_event_id);
+    vector<uint8_t> anomaly_bitstream(context_data.begin(), context_data.end()); 
+    size_t anomaly_bitstream_length = anomaly_bitstream.size(); //context data length
+    /*
+    packet.push_back(((anomaly_bitstream_length >> 24) & 0xFF) | 0x80);
+    packet.push_back((anomaly_bitstream_length >> 16) & 0xFF);
+    packet.push_back((anomaly_bitstream_length >> 8) & 0xFF); // Upper byte
+    packet.push_back(anomaly_bitstream_length & 0xFF); // Lower byte
+    */
+   // itera le righe sopra per creare 4 byte di context data length, i=3 fa l'OR con il formato (1 per 4 byte lunghezza)
+   for (int i = 3; i >= 0; --i) {
+    uint8_t byte = (anomaly_bitstream_length >> (i * 8)) & 0xFF;
+    if (i == 3) {
+        byte |= 0x80;
+    }
+    packet.push_back(byte);
+}
+
+    // CONTEXT DATA, n byte chiamerò get_anomaly_info(custom_event_id);
+    for (uint8_t byte : anomaly_bitstream) {
+        packet.push_back(byte);
+    }
+
+/*
+    // SIGNATURE 
+    ed25519_keypair keypair;
+    ed25519_keypair_from_seed(&keypair, my_secret_key, sizeof(my_secret_key)); // replace with your secret key
+
+    size_t signature_length = ed25519_signature_size();
+    vector<uint8_t> signature(signature_length);
+
+    ed25519_sign(&keypair, packet.data(), packet.size(), signature.data());
+
+    // APPEND SIGNATURE LENGTH AND SIGNATURE TO PACKET
+    packet.push_back((signature_length >> 8) & 0xFF);
+    packet.push_back(signature_length & 0xFF);
+    packet.insert(packet.end(), signature.begin(), signature.end());
+*/
+    return packet;
 }
 
 int main(){
   uint8_t anomal_classe = 8; // ECU H
-  //uint16_t e_ID = 0x8005; // RULE ADDITIONAL CHECKS
   uint16_t e_ID3 = 0x8009; // VOLTAGE ANOMALY
+  vector<uint8_t> packet = create_packet(e_ID3, anomal_classe);//,context_data);
+  unsigned char* blob = packet.data();
+  size_t blob_size = packet.size();
+  cout << "Pacchetto legit del core 2:";
+  print_binary_blob(packet);
+  //uint16_t e_ID = 0x8005; // RULE ADDITIONAL CHECKS
   //uint16_t e_ID2 = 0X80FF; // INVALID EVENT_ID
-  cout << "Pacchetto legit del core 0:\n";
+  //cout << "Pacchetto legit del core 0:\n";
   //create_packet(e_ID,anomal_classe);
-  cout << "Pacchetto legit del core 2:\n";
-  create_packet(e_ID3,anomal_classe);
-  cout << "Pacchetto con event_ID inesistente:\n";
+  //cout << "Pacchetto legit del core 2:\n";
+  //create_packet(e_ID3,anomal_classe);
+  //cout << "Pacchetto con event_ID inesistente:\n";
   //create_packet(e_ID2,anomal_classe);
 
 }
