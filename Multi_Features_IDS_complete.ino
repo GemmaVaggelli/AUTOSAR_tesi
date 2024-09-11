@@ -2,10 +2,18 @@
 /**----- Multi Feature IDS Unipi  -------**/
 
 #include "aux_functions.h"
-MCP2515 mcp2515(9);
+
 
 /* +++++++++++++++++++++++++ ++++++++++++++++++ +++++++++++++++++++  ++++++++++++++++++++*/
 /*** Core 0 ***///Rule Based & Time Fingerprinting
+
+const size_t MAX_DATA_SIZE = 1000; // adjust this value as needed
+const size_t FILTER_INTERVAL = 20;
+const int MAX_PACKET_COUNT = 10;
+const uint8_t PACKET_SIZE = 55;
+size_t data_index = 0;
+//int packetIndex = 0;
+//uint8_t** packets = new uint8_t*[MAX_PACKET_COUNT];
 
 void setup() {
   
@@ -17,9 +25,18 @@ void setup() {
   ReadDBC();  //Read dbc file
   file.close();
   PrintFeaturesFromDBC(); //Print Features from dbc file
+
+
   
+/*
+  // Init data array for filter chain
+  for (size_t i = 0; i < MAX_DATA_SIZE; i++) {
+        data_array[i] = nullptr;
+  }*/
+ 
   /*** --------init can bus -------- ***********/
   SD.begin(BOARD_SPI_SS0_S1);    //79
+
   mcp2515.reset();
   mcp2515.setBitrate(CAN_500KBPS);
   mcp2515.setNormalMode();
@@ -125,8 +142,8 @@ void loop() {
     } 
   SerialASC.println("-------- Test Phase Starts ----------");
   online_phase=true;
-  start_time=millis();    //per valutare sospensioni
-
+  start_time = millis();    //per valutare sospensioni
+  filter_time = millis();
 /*****************************************************************************/
  
   while(1){
@@ -135,18 +152,50 @@ void loop() {
    if(online_phase==true){
    //Serial.print("online_phase dentro if ");Serial.println(online_phase);
    if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
-    
+     //Serial.println(canMsg.can_id, HEX);
      time_mess = millis();
      bitnumber = bitnumber + canMsg.can_dlc*8+44; //standard frame
 
    /***  ---------RULE BASED check functions------------   ***/
-    Check_Diagnostic_anomaly(canMsg.can_id, canMsg.data);
-    Check_ID_anomaly(canMsg.can_id);
-    Check_Rate_anomaly(canMsg.can_id,time_mess);
-    Check_DLC_anomaly(canMsg.can_id,canMsg.can_dlc);
-    Check_Counter_anomaly(canMsg.can_id,canMsg.can_dlc, canMsg.data);
-    Additional_Checks(canMsg.can_id,canMsg.can_dlc,canMsg.data); //custom checks
-    
+     //uint8_t* new_packet = 
+     Check_Diagnostic_anomaly(canMsg.can_id, canMsg.data);
+     //uint8_t* new_packet1 = 
+     Check_ID_anomaly(canMsg.can_id);
+     //uint8_t* new_packet2 = 
+     Check_Rate_anomaly(canMsg.can_id,time_mess);
+     //uint8_t* new_packet3 = 
+     Check_DLC_anomaly(canMsg.can_id,canMsg.can_dlc);
+     //uint8_t* new_packet4 = 
+     Check_Counter_anomaly(canMsg.can_id,canMsg.can_dlc, canMsg.data);
+     //uint8_t* new_packet5 = 
+     Additional_Checks(canMsg.can_id,canMsg.can_dlc,canMsg.data); //custom checks
+/*
+    data_array[data_index] = new_packet;
+    data_index++;
+
+data_array[data_index] = new_packet1;
+    data_index++;
+data_array[data_index] = new_packet2;
+    data_index++;
+data_array[data_index] = new_packet3;
+    data_index++;
+data_array[data_index] = new_packet4;
+    data_index++;
+    data_array[data_index] = new_packet5;
+    data_index++;
+
+if (data_index % FILTER_INTERVAL == 0) {
+        filter_chain(data_array, data_index);
+    }
+
+     if (data_index >= MAX_DATA_SIZE) {
+        for (size_t i = 0; i < MAX_DATA_SIZE; i++) {
+            delete[] data_array[i];
+            data_array[i] = nullptr;
+        }
+        data_index = 0;
+    }
+    */
     /***  ---------TIME FINGERPRINTING check functions------------   ***/
      my_time = time_mess;
      int IDtrovato = FindIndexInList(White_List_ID, canMsg.can_id);
@@ -183,10 +232,38 @@ void loop() {
    if((millis() - bus_time) >= 1000){ // Check bus load every 1 second
       Check_BusLoad_anomaly();
       }
+       
    if ((millis() - init_time) >= 5000){ //Log Ruled based report is printed every 5 seconds 
      PrintAnomalies();
-     }   
+     
+     }
+
+        
+   if ((millis() - filter_time) >= 60000){ //ogni 60 secondi controllo se i contatori di tutti i messaggi si sono incrementati 
+      SD.begin(10);
+      if (!SD.begin(10)) {
+    SerialASC.println("SD card initialization failed!");
+    return;
+}
+  anomaly_file = SD.open("IDS.txt", FILE_WRITE); 
+  if (anomaly_file) {
+    SerialASC.println("File aperto");
+  } 
+  else {
+    SerialASC.println("ERRORE AD APRIRE");
+    return;
+  } 
+      save_IDSpackets_to_SD(packets, packetIndex); // DA RIVEDERE FUNZIONAMENTO APRE FILE MA NON SCRIVE SE FIXO POI AGGIUNGERE FILTRI - CON PACKETINDEX FUNZIONA BENE
+      SerialASC.println("CHIUDO IDS.TXT");
+      anomaly_file.close();
+      filter_chain(packets, packetIndex);
+      SerialASC.println("CHIUDO SAT.TXT");
+      Serial.print("STOP PROCESSING");
+      while(1);
+     } 
+    
    }
+   
   }/*while(1)*/
 }/*loop()*/
 
@@ -194,8 +271,20 @@ void loop() {
 /*** Core 1 ***/
 
 void setup1() {
-	SerialASC.begin(SerialBaude);
-  
+	/* SerialASC.begin(SerialBaude);
+  SD.begin(10);  //CS for SD memory 10
+  anomaly_file = SD.open("IDS.txt", FILE_WRITE); 
+  if (anomaly_file) {
+    SerialASC.println("File aperto");
+  } 
+  else {
+    SerialASC.println("ERRORE AD APRIRE");
+    return;
+  }
+
+  //anomaly_file.print("ABCD");
+  anomaly_file.close();*/
+
 }
 
 void loop1() {

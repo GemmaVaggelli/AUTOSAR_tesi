@@ -1,6 +1,21 @@
 #include "aux_functions.h"
+////////////////////////////////// Gemma Global Variables Definition -------------------------------
 
+// Define named constants for magic numbers
+const uint8_t PACKET_SIZE = 55; // 8 EVENT FRAME + 8 TIMESTAMP + 4 CDL + 32 CD + 2 SL + 1 SIGNATURE
+const int TIMESTAMP_BYTES = 8;
+const int TIMESTAMP_OFFSET = 8;
+const int ANOMALY_INFO_LENGTH = 32;
+const int MAX_PACKET_COUNT = 20;
+File anomaly_file;
+File filter_file;
+uint8_t** packets = new uint8_t*[MAX_PACKET_COUNT]; 
+int packetIndex = 0;
+double filter_time = 0;
 
+MCP2515 mcp2515(9);
+
+//uint8_t** packets;
 /////////////////////////////Ruled Based ----------------------------------------------------------------------------------------
             
 /************* Global Variables Definition *************/
@@ -306,9 +321,13 @@ void Check_Diagnostic_anomaly(unsigned long canId, unsigned char buf[8] ){
   if(Diagnostic_session==false){
     for(int j = 0; j < Num_Diagnostic_ID; j++){
       if(canId==Diag_List[j]){                         //Diagnostic ID occurs during NOT Diagnostic session
-
       Diagnostic_anomaly++;
-
+      
+      /* Creazione pacchetto */
+      String anomaly_info = (String)canId;
+      uint8_t* packet = create_packet(0x8000,0b1000, anomaly_info, packet);
+      insert_packet(packet);
+      
       if(Diagnostic_anomaly%LogLength==0){
         *(P_Diagn_ID_log)=canId;
         P_Diagn_ID_log=&Diagn_ID_log[0];
@@ -319,7 +338,7 @@ void Check_Diagnostic_anomaly(unsigned long canId, unsigned char buf[8] ){
            }  
       }
     }
-   }  
+   } 
  }
 
 
@@ -327,15 +346,22 @@ void Check_ID_anomaly(unsigned long canId){
 
     for(int i = 0; i < Num_ID; i++){
       if(canId==ID_list[i]||canId==0){    //ID 0x00 is not considered anomalous
-        return;
+        return;// nullptr;
         }
       }
      for(int j = 0; j < Num_Diagnostic_ID; j++){
        if(canId==Diag_List[j]){  
-        return;
+        return; // nullptr;
         }
       }
    ID_anomaly++;
+   Serial.println(canId, BIN);
+   
+   /* Creazione pacchetto */
+   String anomaly_info = (String)canId;
+   uint8_t* packet = create_packet(0x8001,0b1000, anomaly_info, packet);
+   insert_packet(packet);
+
    if(ID_anomaly%LogLength==0){
      *(P_Anomal_ID_log)=canId;
      P_Anomal_ID_log=&Anomal_ID_log[0];
@@ -349,12 +375,12 @@ void Check_ID_anomaly(unsigned long canId){
 void Check_DLC_anomaly(unsigned long canId,byte len){
 
   if(ID_anomaly !=0 ){
-    return;
+    return;// nullptr;
     }
   
   for(int j = 0; j < Num_Diagnostic_ID; j++){
        if(canId==Diag_List[j]){                 //if diagnostic ID the DLC is not checked
-        return;
+        return;// nullptr;
         }
    } 
      
@@ -363,12 +389,18 @@ void Check_DLC_anomaly(unsigned long canId,byte len){
   while(canId != ID_list[index]){
     index++;
     if(index==Num_ID){
-      return;
+      return;// nullptr;
       }
     }
     
     if(current_DLC != DLC_list[index]){
       DLC_anomaly++;
+
+      /* Creazione pacchetto */
+      String anomaly_info = (String)canId;
+      uint8_t* packet = create_packet(0x8002,0b1000, anomaly_info, packet);
+      insert_packet(packet);
+      
       if(DLC_anomaly%LogLength==0){
         *(P_Anomal_DLC_log)=canId;
         P_Anomal_DLC_log=&Anomal_DLC_log[0];
@@ -378,6 +410,7 @@ void Check_DLC_anomaly(unsigned long canId,byte len){
           P_Anomal_DLC_log++;
          }
      }
+     
   }
 
 void Check_Rate_anomaly(unsigned long canId,double time_mess){
@@ -395,13 +428,15 @@ void Check_Rate_anomaly(unsigned long canId,double time_mess){
     int index=0;
     while(Periodic_ID_list[index] != canId){
       index++;
-      if(index==num_periodic_mess+1){return;}
+      if(index==num_periodic_mess+1){return; //nullptr;
+      }
       }
 
      double time_elapsed=0;
       
      if(arrival_time_array[index]==0){
       arrival_time_array[index]=time_mess;
+      //return nullptr;
       return;
       }
       else{
@@ -415,6 +450,14 @@ void Check_Rate_anomaly(unsigned long canId,double time_mess){
          if(Period_values[index]>30){
           if((time_elapsed<(1-0.2)*Period_values[index])||(time_elapsed>(1+0.2)*Period_values[index])){  // +/-20% of nominal value
             Rate_anomaly++;
+            
+            /* Crezione Pacchetto */
+            String time_elapsed_str = (String)time_elapsed;
+            String index_str = String(Periodic_ID_list[index],HEX);
+            String anomaly_info = time_elapsed_str + " and 0x" + index_str;
+            uint8_t* packet = create_packet(0x8004, 0b1000, anomaly_info, packet);
+            insert_packet(packet);
+
             if(Rate_anomaly%LogLength==0){
                *(P_Anomal_Rate_log)=canId;
                P_Anomal_Rate_log=&Anomal_Rate_log[0];
@@ -430,6 +473,14 @@ void Check_Rate_anomaly(unsigned long canId,double time_mess){
             
             if((time_elapsed<(1-0.4)*Period_values[index])||(time_elapsed>(1+0.4)*Period_values[index])){  // +/-40% of nominal value
             Rate_anomaly++;
+
+            /* Creazione Pacchetto */
+            String time_elapsed_str = (String)time_elapsed;
+            String index_str = String(Periodic_ID_list[index],HEX);
+            String anomaly_info = time_elapsed_str + " and 0x"+ index_str;
+            uint8_t* packet = create_packet(0x8004, 0b1000, anomaly_info, packet);
+            insert_packet(packet);
+            
             if(Rate_anomaly%LogLength==0){
                *(P_Anomal_Rate_log)=canId;
                P_Anomal_Rate_log=&Anomal_Rate_log[0];
@@ -437,13 +488,15 @@ void Check_Rate_anomaly(unsigned long canId,double time_mess){
               else{
                   *(P_Anomal_Rate_log)=canId;
                   P_Anomal_Rate_log++;
-                }       
+                } 
+                    //return packet;    
             }//if(time_elapsed..)   
            }//else
             
          }//if(Period_values[index] !=0)
 
       //Serial.print("ID received: 0x");Serial.print(canId,HEX);Serial.print(" time_elapsed: ");Serial.print(time_elapsed);Serial.print("Period expected: ");Serial.println(Period_values[index]);    
+
   }
 
 
@@ -453,10 +506,17 @@ void Check_BusLoad_anomaly(){
   Bus_Load=((float)bitnumber/Bitrate)*100; //percentage of Bus Load
   if(Bus_Load > 80){ //80% max
     BusLoad_anomaly++;
+
+    /* Creazione Pacchetto */
+    String anomaly_info = (String)Bus_Load ;
+    uint8_t* packet = create_packet(0x8005, 0b1000, anomaly_info,  packet);
+    insert_packet(packet);
+    
     }
     
   bitnumber=0;
   bus_time=millis();
+
   
   }
 
@@ -466,11 +526,11 @@ void Check_Counter_anomaly(unsigned long canId,byte len, unsigned char buf[8] ){
    while(IdCounter[indexID] != canId){
     indexID++;
     if(indexID ==(NumCounters+1)){
-      return;
+      return;// nullptr;
       }
     }
     if(BitStartCounter[indexID]>(len*8)){   //dlc anomalous 
-      return;
+      return;// nullptr;
       }
     
     for(int p=0; p<len; p++){
@@ -523,12 +583,18 @@ if(endian==1){    //least significant byte first
   if(MessageCounters_prec[indexID]== -2){
     MessageCounters_prec[indexID]=MessageCounters[indexID];
     MessageCounters[indexID]=0;
-    return;
+    return;// nullptr;
     }
  
   if((MessageCounters_prec[indexID]==maxRangeCounter[indexID])&&(MessageCounters[indexID]!=0)){  //max value of the counter
 
       Counter_anomaly++;
+
+      /* Creazione Pacchetto */
+      String anomaly_info = String(indexID,HEX);
+      uint8_t* packet = create_packet(0x8006, 0b1000, anomaly_info, packet);
+      insert_packet(packet);
+      
       if(Counter_anomaly%LogLength==0){
         *(P_Anomal_Counter_log)=canId;
         P_Anomal_Counter_log=&Anomal_Counter_log[0];
@@ -543,6 +609,12 @@ if(endian==1){    //least significant byte first
     //Serial.print("Messagecounter:" );Serial.println(MessageCounters[indexID]);
 
       Counter_anomaly++;
+
+      /* Creazione Pacchetto */
+      String anomaly_info = String(indexID,HEX);
+      uint8_t* packet = create_packet(0x8006, 0b1000, anomaly_info, packet);
+      insert_packet(packet);
+      
       if(Counter_anomaly%LogLength==0){
         *(P_Anomal_Counter_log)=canId;
         P_Anomal_Counter_log=&Anomal_Counter_log[0];
@@ -555,6 +627,7 @@ if(endian==1){    //least significant byte first
 
     MessageCounters_prec[indexID]=MessageCounters[indexID];
     MessageCounters[indexID]=0;
+  
   }
 
 
@@ -612,9 +685,14 @@ void Additional_Checks(unsigned long canId,byte len, unsigned char buf[8]){
  if(((vel*Scale+offset)-vel_prec)>50){
   velocity_increase_anomaly++;
 
+  /* Creazione Pacchetto */
+  String anomaly_info = (String)(vel*Scale+offset);
+  uint8_t* packet = create_packet(0x8006, 0b1000, anomaly_info , packet);
+  insert_packet(packet);
+
   anomal_prev_vel = vel_prec;
   anomal_following_vel = vel*Scale+offset;
-  
+  //return packet; 
   //Serial.println("Anomalous speed increase!");
   //Serial.print("Previous speed: ");Serial.print(vel_prec);Serial.print(" Current speed:");Serial.println(vel*Scale+offset);
   }
@@ -622,7 +700,8 @@ void Additional_Checks(unsigned long canId,byte len, unsigned char buf[8]){
  vel=0;
  
    }
- }      
+ }  
+   
 }
 
 
@@ -741,8 +820,6 @@ void PrintAnomalies(){
     Serial.println("-----------------");
     init_time=millis();
   }
-
-
 
 //////////////////////////Time Fingerprinting ----------------------------------------------------------------------------------------------------------
 
@@ -875,9 +952,20 @@ void Period_Check(int IDtrovato, int checkmedia, int checkvarianza){
       if(IDtrovato==j){
         SerialASC.println("[TIME FINGERPRINTING]");
         SerialASC.print("Period anomaly detected for ID 0x");SerialASC.println(White_List_ID[j],HEX);
+        
+        /* Creazione Pacchetto */
+        String anomaly_info = String(White_List_ID[j],HEX);
+        uint8_t* packet = create_packet(0x8007, 0b1000, anomaly_info, packet);
+        insert_packet(packet);
+        
         SerialASC.print("Average value measured = ");SerialASC.println(VetMediaTest[j]);
         if (*(pID_anomali_varianza + j)>=3){
            SerialASC.println("Variance is anomalous as well");SerialASC.println();
+
+          /* Creazione Pacchetto */
+          uint8_t* packet = create_packet(0x8007, 0b1000, "Variance is anomalous too", packet);
+          insert_packet(packet);
+          
          }
         }
       }
@@ -905,6 +993,12 @@ void Suspension_Check(){
         if(ID_sospesi[i]!=0){
           SerialASC.println("[TIME FINGERPRINTING check]");
           SerialASC.print("Suspended ID 0x");SerialASC.println(White_List_ID[i],HEX);SerialASC.println();
+          
+          /* Creazione Pacchetto */
+          String anomaly_info = String(White_List_ID[i],HEX);
+          uint8_t* packet = create_packet(0x8008, 0b1000, anomaly_info , packet);
+          insert_packet(packet);
+          
           ID_sospesi[i]=0;
           }
         }
@@ -1187,6 +1281,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x4F4 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU A");
             Serial.println();
+            
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x4F4: ECU A", packet );
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1213,6 +1312,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x1E2 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU B");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x1E2: ECU B", packet );
+            insert_packet(packet);
+           
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1238,6 +1342,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x5D6 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU C");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x5D6: ECU C", packet );
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1263,6 +1372,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x2E0 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU D");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x2E0: ECU D", packet );
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1288,6 +1402,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x4D8 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU E");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x4D8: ECU E" , packet);
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1314,6 +1433,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x4EE proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU F");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x4EE: ECU F", packet );
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1340,6 +1464,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x6D6 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU G");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x6D6: ECU G", packet );
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1365,6 +1494,11 @@ if((id[maxIndex] == 0x4F4) && (classe != 'A')){
             Serial.print("Rilevato ID 0x4F0 proveniente da ECU ");Serial.print(anomal_classe);
             Serial.println(" invece che da ECU H");
             Serial.println();
+
+            /*Creazione Pacchetto */
+            uint8_t* packet = create_packet(0x8009, anomal_classe,  "ID 0x4F0: ECU H", packet );
+            insert_packet(packet);
+            
             anomal_classe=0;
             }
           for(int p=0;p<ANOMALY_THRESHOLD;p++){
@@ -1683,7 +1817,6 @@ for(int j=0; j<8; j++){
     anomal_classe='H';
     break;     
     }
-    create_packet(anomal_classe, 0x8008);
   }
 
  for(int y=0;y<8;y++){
@@ -1692,4 +1825,436 @@ for(int j=0; j<8; j++){
   }
   
   
+}
+
+//////////////////////////////////////// FUNCTIONS AUTOSAR ---------------------------------------------------
+/************* FUNZIONI DI SETTAGGIO *************/
+
+/* funzione che controlla che l'eventi_id passato alla funzione create_packet sia valido, altrimenti gli assegna il valore di invalid_event_id */
+uint16_t check_event_id(uint16_t event_id) {
+    if (event_id >= 0x8000 && event_id <= 0x8009) {
+        return event_id;
+    } else {
+        return 0xFFFF;
+    }
+}
+
+/* funzione che imposta il valore del sensor_id in base all'event_id, se è un'anomalia voltage assegna l'ECU di riferimento*/
+uint8_t set_sensor_value(uint16_t event_id, uint8_t anomal_classe) {
+    if (event_id >= 0x8000 && event_id <= 0x8008) {
+        return 0b1000;
+    } else if(event_id == 0x8009){
+        return anomal_classe;
+    }else return 0b1111;
+}
+
+/* funzione che assegna il core di provenienza in base all'event_id */
+uint8_t assign_idsm_id(uint16_t event_id) {
+    if (event_id >= 0x8000 && event_id <= 0x8008) {
+        return 0;
+    } else if(event_id == 0x8009){
+        return 1;
+    }else return 255; // undefined core
+}
+
+/* Funzione che fa il checksum del pacchetto come firma */
+uint8_t calculate_checksum(uint8_t* data, size_t length) {
+  uint8_t checksum = 0;
+  for (size_t i = 0; i < length; i++) {
+    checksum += data[i];
+  }
+  return checksum;
+}
+
+
+void insert_packet(uint8_t* packet) {
+  if (packetIndex < MAX_PACKET_COUNT) {
+    packets[packetIndex] = packet;
+    packetIndex++;
+  } else {
+    // Shift the packets array to the left
+    for (int i = 0; i < MAX_PACKET_COUNT - 1; i++) {
+      packets[i] = packets[i + 1];
+    }
+    packets[MAX_PACKET_COUNT - 1] = packet;
+  }
+
+  // Check if the Filter Chain is applicable
+  if (packetIndex == MAX_PACKET_COUNT) {
+    packetIndex = 0; // Reset the packetIndex
+  }
+}
+/*
+void save_packet_to_SD(uint8_t* packet) {
+  for (int i = 0; i < PACKET_SIZE; i++) {
+    for (int j = 7; j >= 0; --j) {
+      anomaly_file.print(((packet[i] >> j) & 1));
+    }
+    anomaly_file.print(" ");
+  }
+  anomaly_file.println(); // Add a newline at the end
+}*/
+
+void save_IDSpackets_to_SD(uint8_t** packets, int size) {
+    for (int i = 0; i < size; i++) {
+        SerialASC.print("Processing packet ");
+        SerialASC.println(i);
+        for (int j = 0; j < PACKET_SIZE; j++) {
+              SerialASC.print("Byte ");
+              SerialASC.print(j);
+              SerialASC.print(": ");
+              SerialASC.println(String(packets[i][j]));
+            for (int k = 7; k >= 0; --k) {
+                //anomaly_file.println("Test write to file");
+                anomaly_file.print(((packets[i][j] >> k) & 1));
+            }
+            anomaly_file.print(" ");
+        }
+        anomaly_file.println(); // Add a newline at the end
+    }
+}
+
+// DA RIVEDERE QUANDO AGGIUNGO I FILTRI POTREBBE DIVENTARE UNA FUNZIONE UNICA CON QUELLA SOPRA (?)
+void save_packets_to_SD(uint8_t** packets, int size) {
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < PACKET_SIZE; j++) {
+            for (int k = 7; k >= 0; --k) {
+                filter_file.print(((packets[i][j] >> k) & 1));
+            }
+            filter_file.print(" ");
+        }
+        filter_file.println(); // Add a newline at the end
+    }
+}
+
+/*************** FUNZIONI DI DEBUG *************** */
+
+void print_binary(uint8_t* blob, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        for (int j = 7; j >= 0; --j) {
+            Serial.print(((blob[i] >> j) & 1));
+        }
+        Serial.print(" ");
+
+        if ((i + 1) % 8 == 0) {
+            Serial.println();
+        }
+    }
+    Serial.println(); // Add a newline at the end
+}
+void print_uint64_t(uint64_t num) {
+  for (int i = 63; i >= 0; i--) {
+    Serial.print((num >> i) & 1? '1' : '0');
+  }
+}
+/******************** FUNZIONE CREAZIONE PACCHETTO *********************** */
+
+
+uint8_t* create_packet(uint16_t custom_event_id, uint8_t anomal_classe, String anomaly_info, uint8_t* &packet) {
+
+   uint8_t packet_size = PACKET_SIZE; // 55 bytes
+   packet = new uint8_t[packet_size]; // EF + TS + CD + SIGN
+   
+  // Initialize packet array with correct values
+  for (int i = 0; i < packet_size; i++) {
+    packet[i] = 0; // initialize with 0
+  }
+
+
+  // BYTES 0-7 EVENT FRAME ---------------------------------------
+  packet[0] = 0b00010111; // protocol version and protocol header
+  uint8_t custom_sensor_id = set_sensor_value(custom_event_id, anomal_classe);
+  uint8_t idsm_ID = assign_idsm_id(custom_event_id);
+  packet[1] = idsm_ID; // idsm_ID
+  packet[2] = custom_sensor_id & 0x3F;
+  packet[3] = (custom_event_id >> 8) & 0xFF; // event_id
+  packet[4] = custom_event_id & 0xFF; // event_id
+  packet[5] = 0b00000000; // counter
+  packet[6] = 0b00000001; // counter
+  packet[7] = 0b00000000; // reserved
+  
+  
+  
+  // BYTES 8 - 15 TIMESTAMP ------------------------------------------------
+  unsigned long timestamp = millis();
+  Serial.print("Timestamp: ");
+  Serial.println(timestamp);
+  uint8_t timestamp_bytes[TIMESTAMP_BYTES]; // 64 bit
+  for (int t = TIMESTAMP_BYTES - 1 ; t >= 0; t--) {
+    timestamp_bytes[t] = (timestamp >> (t * 8)) & 0xFF;
+  } 
+    
+  // Write timestamp to the packet
+  for (int i = 0; i < TIMESTAMP_BYTES; i++) {
+      packet[15 - i] = timestamp_bytes[i];
+  }
+
+  packet[8] |= 0x80; // added source = 1 CUSTOM overwrite of MSB of timestamp
+
+  //  BYTES 16 - 19 CONTEXT DATA LENGHT -----------------------------------------
+  uint8_t anomaly_bitstream_length = anomaly_info.length();
+  for (int i = 3; i >= 0; --i) {
+    uint8_t byte = (anomaly_bitstream_length >> (i * 8)) & 0xFF;
+    if (i == 3) {
+      byte |= 0x80; // Context Data Length format, set to 1, 4 bytes long
+    }
+    packet[19 - i] = byte;
+  } 
+  // BYTES 20 - 51 CONTEXT DATA -------------------------------------------------
+  // Add anomaly info to packet
+  for (int i = 0; i < ANOMALY_INFO_LENGTH; i++) {
+    packet[20 + i] = anomaly_info[i];
+  }
+  // BYTES 52 - 54 SIGNATURE LENGHT E SIGNATURE WITH checksum ---------------------
+ 
+  uint8_t checksum = calculate_checksum(packet, PACKET_SIZE);
+  packet[52] = 0;
+  packet[53] = 1;
+  packet[54] = checksum;
+  //print_binary(packet, PACKET_SIZE);
+  /*SD.begin(10);
+  anomaly_file = SD.open("IDS.txt", FILE_WRITE); 
+  if (anomaly_file) {
+    SerialASC.println("File aperto");
+  } 
+  else {
+    SerialASC.println("ERRORE AD APRIRE");
+    return nullptr;
+  } 
+  save_packet_to_SD(packet);
+  
+SerialASC.println("CHIUDO IDS.TXT ");
+  anomaly_file.close();
+SD.begin(BOARD_SPI_SS0_S1);
+  mcp2515.reset();
+  mcp2515.setBitrate(CAN_500KBPS);
+  mcp2515.setNormalMode();*/
+  
+return packet;
+}
+
+/********************** FILTER CHAIN **************************** */
+
+uint8_t** sampling_filter(uint8_t** packets, int packets_length, int n) {
+  uint8_t** sampled_packets = nullptr;
+  int sampled_packet_size = packets_length / n;
+  if (packets_length % n!= 0) {
+    sampled_packet_size++; // account for remainder
+  }
+  sampled_packets = (uint8_t**) malloc(sampled_packet_size * sizeof(uint8_t*));
+
+  int j = 0;
+  for (int i = 0; i < packets_length; i++) {
+    if ((i + 1) % n == 1) { // forward every n-th packet
+      sampled_packets[j] = new uint8_t[PACKET_SIZE];
+      memcpy(sampled_packets[j], packets[i], PACKET_SIZE);
+      j++;
+    }
+  }
+  return sampled_packets;
+}
+
+uint8_t** aggregation_filter(uint8_t** packets, uint64_t time_interval, int packets_size, int* aggregated_packets_size) {
+  const int max_aggregated_packets = 25; // adjust this value based on your needs
+  uint8_t** aggregated_packets = new uint8_t*[max_aggregated_packets];
+  int packets_aggregated_size = 0;
+  
+  Serial.println("Entering aggregation_filter with packets_size = ");
+  Serial.println(packets_size);
+  //print_binary(packets[i], PACKET_SIZE);
+
+  for (int i = 0; i < max_aggregated_packets; i++) {
+    aggregated_packets[i] = new uint8_t[PACKET_SIZE];
+     
+  }
+ 
+  for (int i = 0; i < packets_size; i++){/*
+    Serial.print("Processing packet ");
+    Serial.print(i);
+    Serial.print(": ");
+    for (int j = 0; j < PACKET_SIZE; j++) {
+      Serial.print(packets[i][j], BIN);
+      Serial.print(" ");
+    }
+    Serial.println();*/
+    bool found = false;
+    for (int j = 0; j < packets_aggregated_size; j++) {
+      if (packets[i][3] == aggregated_packets[j][3] && packets[i][4] == aggregated_packets[j][4]) {
+        Serial.println("Packets have same event id");
+        uint64_t time_x = (packets[i][8] << 56) | packets[i][9] << 48 | packets[i][10] << 40 | packets[i][11] << 32 | packets[i][12] << 24 | packets[i][13] << 16 | packets[i][14] << 8 | packets[i][15];
+        uint64_t time_y = (aggregated_packets[j][8] << 56) | aggregated_packets[j][9] << 48 | aggregated_packets[j][10] << 40 | aggregated_packets[j][11] << 32 | aggregated_packets[j][12] << 24 | aggregated_packets[j][13] << 16 | aggregated_packets[j][14] << 8 | aggregated_packets[j][15];
+
+        if ((time_x - time_y) < time_interval) {
+          aggregated_packets[j][6]++; // increment counter
+          Serial.println("The two packets respect the time interval");
+          found = true;
+          break;
+        }
+      }else {Serial.println("Packets DO NOT have same event id");}
+    }
+
+    if (!found) {
+      if (packets_aggregated_size < max_aggregated_packets) {
+        memcpy(aggregated_packets[packets_aggregated_size], packets[i], PACKET_SIZE);
+        aggregated_packets[packets_aggregated_size][6] = 1; // initialize counter
+        packets_aggregated_size++; // increment packets_aggregated_size here
+      } else {
+        Serial.println("Maximum number of aggregated packets reached. Discarding packet.");
+      }
+    }
+  }
+  *aggregated_packets_size = packets_aggregated_size;
+  Serial.print("Number of aggregated packets:");
+  Serial.println(packets_aggregated_size);
+  Serial.println("Exiting aggregation_filter");
+  return aggregated_packets;
+}
+
+uint8_t** threshold_filter(uint8_t** packets, int threshold, uint64_t time_interval, int packets_size, int* threshold_packets_size){
+  const int max_threshold_packets = 25;
+  uint8_t** threshold_packets = new uint8_t*[max_threshold_packets];
+  int threshold_packets_index = 0;
+  int counter = 0;
+  bool packet_meets_threshold = false;
+  Serial.print("Inizio filtro threshold with number of packets: ");
+  Serial.println(packets_size);
+
+  if(packets_size == 1){
+   counter = packets[0][6];
+   packet_meets_threshold = false;
+   if(counter >= threshold){
+    packet_meets_threshold = true;
+    Serial.print("Packet with size 1 meets threshold condition with counter ");
+    Serial.println(counter);
+    }
+   }
+
+  for(int i = 0; i < packets_size; i++){ 
+    if(packets_size != 1){
+    uint64_t time_x = (packets[i][8] << 56) | packets[i][9] << 48 | packets[i][10] << 40 | packets[i][11] << 32  | packets[i][12] << 24  | packets[i][13] <<16 | packets[i][14] << 8 | packets[i][15] ;
+    //Serial.println("estratto timestamp di primo elemento");
+    counter = packets[i][6];
+    Serial.print("counter value before checks: ");
+    Serial.println(counter);
+    packet_meets_threshold = false;
+    for(int j= packets_size - 1 ; j>=0 ; j--){
+      uint64_t time_y = (packets[j][8] << 56) | packets[j][9] << 48 | packets[j][10] << 40 | packets[j][11] << 32  | packets[j][12] << 24  | packets[j][13] <<16 | packets[j][14] << 8 | packets[j][15];
+      //Serial.println("estratto timestamp del secondo elemento");
+      if(packets[i][3] == packets[j][3] && packets[i][4] == packets[j][4]){
+        Serial.println("i pacchetti hanno stesso event id");
+        counter = packets[j][6];
+        Serial.print("counter value after evevent_id checks: ");
+        Serial.println(counter);
+        if(counter >= threshold && (time_x - time_y) < time_interval){
+          packet_meets_threshold = true;
+          Serial.print("Packet ");
+          Serial.print(i);
+          Serial.print(" meets threshold condition with counter: and respect the time interval ");
+          Serial.println(counter);
+        }
+      }
+    }
+    }
+  
+  if(packet_meets_threshold){
+  bool packet_exists = false;
+  for (int k = 0; k < threshold_packets_index; k++) {
+    if (packets[i][3] == threshold_packets[k][3] && packets[i][4] == threshold_packets[k][4]) {
+      threshold_packets[k][6] = counter;
+      packet_exists = true;
+      break;
+    }
+  }
+  if (!packet_exists) {
+    threshold_packets[threshold_packets_index] = new uint8_t[PACKET_SIZE];
+    memcpy(threshold_packets[threshold_packets_index], packets[i], PACKET_SIZE);
+    threshold_packets[threshold_packets_index][6] = counter;
+    threshold_packets_index++;
+        Serial.print("Packet ");
+        Serial.print(i);
+        Serial.print(" added to threshold packets with counter ");
+        Serial.println(counter);
+      }
+    }
+  }
+  Serial.println("Threshold Packets inside filter: ");
+  Serial.println(threshold_packets_index);
+  *threshold_packets_size = threshold_packets_index;
+  return threshold_packets;
+}
+
+
+
+void filter_chain(uint8_t** packets, size_t packets_size){
+
+ int n = 2; // sampling rate con n = 1 si rompe
+ int threshold = 3; // si rompe con threshold = 2 o 1 
+ uint64_t time_interval = 4000;
+ 
+ int packets_sampling_size = packets_size/n;
+ int packets_aggregated_size;
+ int threshold_packets_size;
+
+ if (packets == nullptr || packets_size == 0) {
+      Serial.println("ERRORE: filter chain vuota! ");
+    }
+  
+        uint8_t** s_packets = sampling_filter(packets, packets_size, n);
+        uint8_t** a_packets = aggregation_filter(s_packets, time_interval, packets_sampling_size, &packets_aggregated_size);
+        uint8_t** t_packets = threshold_filter(a_packets, threshold, time_interval, packets_aggregated_size, &threshold_packets_size);
+    
+
+      
+
+  for(int i = 0; i < packets_sampling_size; i++){
+  if (s_packets != nullptr) {
+    Serial.print("Filtered packets from sampling: ");
+    print_binary(s_packets[i], PACKET_SIZE); 
+    Serial.println();
+  }
+}
+
+  for(int i = 0; i < packets_aggregated_size; i++){
+  if (a_packets != nullptr) {
+    Serial.print("Filtered packets from aggregation: ");
+    print_binary(a_packets[i], PACKET_SIZE); 
+    Serial.println();
+  }
+}
+
+  for(int i = 0; i < threshold_packets_size; i++){
+  if (t_packets != nullptr) {
+    Serial.print("Filtered packets from thershold: ");
+    print_binary(t_packets[i], PACKET_SIZE); 
+    Serial.println();
+  }
+}
+  filter_file = SD.open("sat.txt", FILE_WRITE); 
+  if (filter_file) {
+    SerialASC.println("File filtri aperto");
+  } 
+  else {
+    SerialASC.println("ERRORE AD APRIRE");
+    return;
+  } 
+  save_packets_to_SD(t_packets, threshold_packets_size);
+  filter_file.close();
+  
+    // Free memory allocated for filtered packets
+    for (int i = 0; i < threshold_packets_size; i++) {
+        delete[] t_packets[i];
+    }
+    delete[] t_packets;
+
+    // Free memory allocated for aggregated packets
+    for (int i = 0; i < packets_aggregated_size; i++) {
+        delete[] a_packets[i];
+    }
+    delete[] a_packets;
+
+    // Free memory allocated for sampled packets
+    for (int i = 0; i < packets_sampling_size; i++) {
+        delete[] s_packets[i];
+    }
+    delete[] s_packets;
 }

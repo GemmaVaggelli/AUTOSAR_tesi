@@ -13,6 +13,7 @@
 #define SerialBaude 1000000
 #define CSPin 4
 #define Serial SerialASC
+extern MCP2515 mcp2515;
 
 ///////////////////////////////////////Ruled Based ------------------------------------------------------------------
 
@@ -227,6 +228,26 @@ int CheckVarianzaRangeRaw(double var_train, double var_test);
 void Period_Check(int IDtrovato, int checkmedia, int checkvarianza);
 void azzeraRigaMatrice(int index_riga, double* pMatrix, int dimCol);
 void Suspension_Check();
+
+////////////////////////////////// FUNCTION DEFINITION GEMMA ------------------------------------------
+#define FileNameIDS "IDS.txt"
+extern File anomaly_file;
+extern File filter_file;
+extern uint8_t**  packets;
+extern double filter_time;
+extern int packetIndex;
+
+uint16_t check_event_id(uint16_t event_id);
+uint8_t set_sensor_value(uint16_t event_id, uint8_t anomal_classe);
+uint8_t assign_idsm_id(uint16_t event_id);
+uint8_t calculate_checksum(uint8_t* data, size_t length);
+uint8_t* create_packet(uint16_t custom_event_id, uint8_t anomal_classe, String anomaly_info, uint8_t* &packet);
+void filter_chain(uint8_t** packets, size_t packets_size);
+//void save_packet_to_SD(uint8_t* packet);
+void save_packets_to_SD(uint8_t** packets, int size);
+void save_IDSpackets_to_SD(uint8_t** packets, int size);
+void insert_packet(uint8_t* packet);
+/************* Filter Chain Function Declaration *****************/
 
 
 
